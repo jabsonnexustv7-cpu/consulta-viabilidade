@@ -3,193 +3,301 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Consulta Viabilidade (OzMap)</title>
+  <title>Consulta de Viabilidade (OzMap)</title>
   <style>
-    body { font-family: system-ui, Arial, sans-serif; margin: 24px; max-width: 980px; }
-    h1 { margin: 0 0 12px; }
-    .card { border: 1px solid #ddd; border-radius: 12px; padding: 16px; margin: 12px 0; }
-    label { display:block; font-weight: 600; margin: 10px 0 6px; }
-    input, textarea, select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 10px; }
-    textarea { min-height: 100px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
-    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    .actions { display:flex; gap:10px; flex-wrap: wrap; margin-top: 12px; }
-    button { padding: 10px 14px; border: 0; border-radius: 10px; cursor:pointer; }
-    button.primary { background: #2563eb; color: #fff; }
-    button.secondary { background: #e5e7eb; }
-    .hint { color: #555; font-size: 14px; margin-top: 6px; }
-    .ok { color: #166534; font-weight: 700; }
-    .bad { color: #991b1b; font-weight: 700; }
-    pre { background: #0b1020; color: #e5e7eb; padding: 12px; border-radius: 12px; overflow:auto; }
-    code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
-    .mini { font-size: 12px; color:#6b7280; margin-top: 6px; }
+    :root { --b:#e5e7eb; --t:#111827; --m:#6b7280; --bg:#ffffff; }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+      color:var(--t);
+      background:var(--bg);
+    }
+    .wrap{max-width:1100px;margin:32px auto;padding:0 18px}
+    h1{font-size:40px;margin:0 0 6px}
+    p{margin:0 0 18px;color:var(--m)}
+    .card{
+      border:1px solid var(--b);
+      border-radius:14px;
+      padding:18px;
+      margin:16px 0;
+      background:#fff;
+    }
+    .grid{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:14px;
+    }
+    @media (max-width: 860px){ .grid{grid-template-columns:1fr} }
+    label{display:block;font-weight:600;margin:8px 0 6px}
+    input, select{
+      width:100%;
+      padding:12px 12px;
+      border-radius:10px;
+      border:1px solid var(--b);
+      font-size:14px;
+      outline:none;
+    }
+    input:focus, select:focus{border-color:#9ca3af}
+    .help{color:var(--m);font-size:12px;margin-top:6px}
+    .row{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+    button{
+      padding:10px 14px;
+      border-radius:10px;
+      border:1px solid var(--b);
+      background:#f3f4f6;
+      cursor:pointer;
+      font-weight:600;
+    }
+    button.primary{
+      background:#2563eb;
+      color:#fff;
+      border-color:#1d4ed8;
+    }
+    button:disabled{opacity:.55;cursor:not-allowed}
+    .status{
+      font-weight:700;
+      color:#b91c1c;
+    }
+    .status.ok{color:#065f46}
+    pre{
+      margin:0;
+      padding:14px;
+      border-radius:12px;
+      background:#0b1220;
+      color:#e5e7eb;
+      overflow:auto;
+      min-height:80px;
+    }
+    .mini{color:var(--m);font-size:12px}
+    .badge{
+      display:inline-block;
+      padding:2px 10px;
+      border-radius:999px;
+      border:1px solid var(--b);
+      color:var(--m);
+      font-size:12px;
+      margin-left:8px;
+      vertical-align:middle;
+    }
   </style>
 </head>
+
 <body>
-  <h1>Consulta de Viabilidade (OzMap)</h1>
-  <div class="hint">
-    Consulta por <b>coordenadas</b> ou <b>CEP + fachada</b>.
-    <div class="mini" id="endpointInfo"></div>
-  </div>
+  <div class="wrap">
+    <h1>Consulta de Viabilidade (OzMap)</h1>
+    <p>
+      Consulta por <b>coordenadas</b> ou <b>CEP + fachada</b>.
+      <span class="badge">Endpoint fixo configurado</span>
+    </p>
 
-  <div class="card">
-    <div class="row">
-      <div>
-        <label>Modo de consulta</label>
-        <select id="mode">
-          <option value="coords">Coordenadas (lat,lng)</option>
-          <option value="cep">CEP + fachada</option>
-        </select>
+    <div class="card">
+      <div class="grid">
+        <div>
+          <label for="mode">Modo de consulta</label>
+          <select id="mode">
+            <option value="coords">Coordenadas (lat,lng)</option>
+            <option value="cep">CEP + fachada</option>
+          </select>
+        </div>
+        <div>
+          <label for="radius">Raio (meters)</label>
+          <input id="radius" type="number" value="200" min="50" step="10" />
+        </div>
       </div>
-      <div>
-        <label>Raio (meters)</label>
-        <input id="radius" type="number" value="200" min="10" step="10" />
+
+      <!-- COORDS -->
+      <div id="boxCoords">
+        <label for="coords">Coordenadas (ex: -29.728272614451,-53.812125809491)</label>
+        <input id="coords" placeholder="-29.1698153,-51.2078443" />
+        <div class="help">Formato: <b>lat,lng</b> (vírgula, sem texto extra).</div>
       </div>
-    </div>
 
-    <div id="coordsBox">
-      <label>Coordenadas (ex: -29.728272614451,-53.812125809491)</label>
-      <input id="coords" placeholder="-29.169815,-51.207844" />
-      <div class="hint">Formato: <code>lat,lng</code> (vírgula, sem texto extra).</div>
-    </div>
+      <!-- CEP -->
+      <div id="boxCep" style="display:none">
+        <div class="grid">
+          <div>
+            <label for="cep">CEP</label>
+            <input id="cep" placeholder="95012-440" />
+          </div>
+          <div>
+            <label for="fachada">Fachada (logradouro + número)</label>
+            <input id="fachada" placeholder="Av. Circular Pedro Mocelin, 32" />
+          </div>
+        </div>
+        <div class="help">
+          Para geocoding dar certo, envie <b>Rua/Av + número</b> (não só o número).
+        </div>
+      </div>
 
-    <div id="cepBox" style="display:none;">
       <div class="row">
-        <div>
-          <label>CEP</label>
-          <input id="cep" placeholder="95012-440" />
-        </div>
-        <div>
-          <label>Fachada (logradouro + número)</label>
-          <input id="fachada" placeholder="Avenida Circular Pedro Mocelin 32" />
+        <button class="primary" id="btnConsultar">Consultar</button>
+        <button id="btnExCoords">Exemplo coords</button>
+        <button id="btnExCep">Exemplo CEP</button>
+        <button id="btnLimpar">Limpar</button>
+      </div>
+
+      <div class="card" style="margin-top:16px">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+          <div>
+            <div style="font-weight:800;margin-bottom:6px">Status</div>
+            <div id="status" class="status">Aguardando...</div>
+          </div>
+          <div class="mini" id="mini"></div>
         </div>
       </div>
-      <div class="hint">Envie <code>Rua/Av + número</code> (não só o número).</div>
+
+      <div class="card">
+        <div style="font-weight:800;margin-bottom:10px">Resposta (JSON)</div>
+        <pre id="output">{}</pre>
+      </div>
     </div>
-
-    <div class="actions">
-      <button class="primary" id="btnConsultar">Consultar</button>
-      <button class="secondary" id="btnExemploCoords">Exemplo coords</button>
-      <button class="secondary" id="btnExemploCep">Exemplo CEP</button>
-      <button class="secondary" id="btnLimpar">Limpar</button>
-    </div>
-  </div>
-
-  <div class="card">
-    <label>Status</label>
-    <div id="status">Aguardando…</div>
-  </div>
-
-  <div class="card">
-    <label>Resposta (JSON)</label>
-    <pre><code id="output">{}</code></pre>
   </div>
 
   <script>
-    // ✅ URL FIXA (já embutida)
-    const WEBAPP_URL =
-      "https://script.google.com/macros/s/AKfycbxZGS3gyYjRE7VOWBWfy0HpOk7YfVgYmbTg1EC0R3yTU99-wQDDIQkvmd2I7Xjk-iJn/exec";
+    // ✅ ENDPOINT FIXO (não aparece na tela)
+    const ENDPOINT = "https://script.google.com/macros/s/AKfycbxZGS3gyYjRE7VOWBWfy0HpOk7YfVgYmbTg1EC0R3yTU99-wQDDIQkvmd2I7Xjk-iJn/exec";
 
     const $ = (id) => document.getElementById(id);
 
-    function setStatus(text, kind) {
-      const el = $("status");
-      el.textContent = text;
-      el.className = kind || "";
-    }
+    const setStatus = (msg, ok=false) => {
+      $("status").textContent = msg;
+      $("status").className = "status" + (ok ? " ok" : "");
+    };
 
-    function pretty(obj) {
-      try { return JSON.stringify(obj, null, 2); } catch { return String(obj); }
-    }
+    const setMini = (msg) => $("mini").textContent = msg || "";
 
-    function normalizeUrl(url) {
-      return (url || "").trim().replace(/\/+$/, "");
-    }
+    const setOutput = (obj) => {
+      $("output").textContent = typeof obj === "string" ? obj : JSON.stringify(obj, null, 2);
+    };
 
-    function buildPayload() {
-      const radius = Number($("radius").value || 200);
-      const mode = $("mode").value;
+    // ---------- JSONP (SEM FETCH) ----------
+    function jsonpRequest(payload) {
+      return new Promise((resolve, reject) => {
+        const cbName = "cb_" + Date.now() + "_" + Math.random().toString(16).slice(2);
 
-      if (mode === "coords") {
-        const coords = ($("coords").value || "").trim();
-        return { coords, radius };
-      } else {
-        const cep = ($("cep").value || "").trim();
-        const fachada = ($("fachada").value || "").trim();
-        return { cep, fachada, radius };
-      }
-    }
+        // timeout
+        const timeoutMs = 15000;
+        const t = setTimeout(() => {
+          cleanup();
+          reject(new Error("Timeout na requisição JSONP."));
+        }, timeoutMs);
 
-    async function callWebhook() {
-      const url = normalizeUrl(WEBAPP_URL);
-
-      const payload = buildPayload();
-      $("output").textContent = pretty({ sending: payload });
-
-      setStatus("Consultando…", "");
-
-      try {
-        const res = await fetch(url, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload)
-        });
-
-        const text = await res.text();
-        let data;
-        try { data = JSON.parse(text); } catch { data = { raw_text: text }; }
-
-        $("output").textContent = pretty(data);
-
-        if (data && data.ok === true) {
-          const v = data.viavel === true ? "VIÁVEL" : "NÃO VIÁVEL";
-          const coords = data.coords || (data.lat + "," + data.lng);
-          setStatus(`OK • ${v} • coords: ${coords} • ms: ${data.ms ?? "?"}`, data.viavel ? "ok" : "bad");
-        } else {
-          setStatus(`Falhou • motivo: ${data?.motivo || "desconhecido"} • httpStatus: ${data?.httpStatus || res.status}`, "bad");
+        function cleanup() {
+          clearTimeout(t);
+          try { delete window[cbName]; } catch(e) { window[cbName] = undefined; }
+          if (script && script.parentNode) script.parentNode.removeChild(script);
         }
-      } catch (err) {
-        $("output").textContent = pretty({ error: String(err) });
-        setStatus("Erro na chamada (fetch). Verifique se o WebApp está público.", "bad");
-      }
+
+        window[cbName] = (data) => {
+          cleanup();
+          resolve(data);
+        };
+
+        const url =
+          ENDPOINT +
+          "?data=" + encodeURIComponent(JSON.stringify(payload)) +
+          "&callback=" + encodeURIComponent(cbName);
+
+        const script = document.createElement("script");
+        script.src = url;
+        script.async = true;
+
+        script.onerror = () => {
+          cleanup();
+          reject(new Error("Falha ao carregar o script JSONP (endpoint inacessível ou bloqueado)."));
+        };
+
+        document.body.appendChild(script);
+      });
     }
 
+    // ---------- UI ----------
     function toggleMode() {
       const mode = $("mode").value;
-      $("coordsBox").style.display = mode === "coords" ? "" : "none";
-      $("cepBox").style.display = mode === "cep" ? "" : "none";
-      setStatus("Aguardando…", "");
-      $("output").textContent = "{}";
+      $("boxCoords").style.display = (mode === "coords") ? "block" : "none";
+      $("boxCep").style.display = (mode === "cep") ? "block" : "none";
+      setStatus("Aguardando...");
+      setMini("");
+      setOutput({});
     }
 
-    $("mode").addEventListener("change", toggleMode);
-    $("btnConsultar").addEventListener("click", callWebhook);
+    async function consultar() {
+      const mode = $("mode").value;
+      const radius = Number($("radius").value || 200);
 
-    $("btnExemploCoords").addEventListener("click", () => {
+      let payload = { radius };
+
+      if (mode === "coords") {
+        const coords = $("coords").value.trim();
+        payload.coords = coords;
+      } else {
+        const cep = $("cep").value.trim();
+        const fachada = $("fachada").value.trim();
+        payload.cep = cep;
+        payload.fachada = fachada;
+      }
+
+      $("btnConsultar").disabled = true;
+      setStatus("Consultando...");
+      setMini("");
+
+      try {
+        const res = await jsonpRequest(payload);
+
+        setOutput(res);
+
+        if (res && res.ok === true) {
+          setStatus(res.viavel ? "✅ Viável" : "❌ Não viável", true);
+          const extras = [];
+          if (res.coords) extras.push("coords: " + res.coords);
+          if (res.box_nome) extras.push("box: " + res.box_nome);
+          if (res.distancia_melhor_box !== "" && res.distancia_melhor_box != null) extras.push("dist: " + res.distancia_melhor_box);
+          if (res.ms != null) extras.push("ms: " + res.ms);
+          setMini(extras.join(" | "));
+        } else {
+          setStatus("Erro: " + (res && res.motivo ? res.motivo : "resposta inválida"));
+          if (res && res.detalhe) setMini(res.detalhe);
+        }
+
+      } catch (err) {
+        setStatus("Erro na chamada. " + String(err.message || err));
+        setOutput({ error: String(err.message || err) });
+      } finally {
+        $("btnConsultar").disabled = false;
+      }
+    }
+
+    // ---------- events ----------
+    $("mode").addEventListener("change", toggleMode);
+    $("btnConsultar").addEventListener("click", consultar);
+
+    $("btnExCoords").addEventListener("click", () => {
       $("mode").value = "coords";
       toggleMode();
-      $("coords").value = "-29.169815,-51.207844";
-      $("radius").value = 200;
+      $("coords").value = "-29.1698153,-51.2078443";
+      $("radius").value = "200";
     });
 
-    $("btnExemploCep").addEventListener("click", () => {
+    $("btnExCep").addEventListener("click", () => {
       $("mode").value = "cep";
       toggleMode();
       $("cep").value = "95012-440";
-      $("fachada").value = "Avenida Circular Pedro Mocelin 32";
-      $("radius").value = 200;
+      $("fachada").value = "Av. Circular Pedro Mocelin, 32";
+      $("radius").value = "200";
     });
 
     $("btnLimpar").addEventListener("click", () => {
       $("coords").value = "";
       $("cep").value = "";
       $("fachada").value = "";
-      $("output").textContent = "{}";
-      setStatus("Aguardando…", "");
+      $("radius").value = "200";
+      setStatus("Aguardando...");
+      setMini("");
+      setOutput({});
     });
 
-    // Mostra só uma info pequena (opcional)
-    $("endpointInfo").textContent = "Endpoint fixo configurado.";
-
+    // init
     toggleMode();
   </script>
 </body>
