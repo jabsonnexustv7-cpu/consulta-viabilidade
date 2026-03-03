@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Consulta Viabilidade (OzMap)</title>
+  <style>
+    body { font-family: system-ui, Arial, sans-serif; margin: 24px; max-width: 980px; }
+    h1 { margin: 0 0 12px; }
+    .card { border: 1px solid #ddd; border-radius: 12px; padding: 16px; margin: 12px 0; }
+    label { display:block; font-weight: 600; margin: 10px 0 6px; }
+    input, textarea, select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 10px; }
+    textarea { min-height: 100px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .actions { display:flex; gap:10px; flex-wrap: wrap; margin-top: 12px; }
+    button { padding: 10px 14px; border: 0; border-radius: 10px; cursor:pointer; }
+    button.primary { background: #2563eb; color: #fff; }
+    button.secondary { background: #e5e7eb; }
+    .hint { color: #555; font-size: 14px; margin-top: 6px; }
+    .ok { color: #166534; font-weight: 700; }
+    .bad { color: #991b1b; font-weight: 700; }
+    pre { background: #0b1020; color: #e5e7eb; padding: 12px; border-radius: 12px; overflow:auto; }
+    code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  </style>
+</head>
+<body>
+  <h1>Consulta de Viabilidade (OzMap)</h1>
+  <div class="hint">
+    Envia para seu webhook (Apps Script). Você pode consultar por <b>coordenadas</b> ou <b>CEP + fachada</b>.
+  </div>
+
+  <div class="card">
+    <label>URL do WebApp (Apps Script)</label>
+    <input id="webappUrl" placeholder="Cole aqui a URL do seu Apps Script Web App" />
+    <div class="hint">
+      Ex: https://script.google.com/macros/s/XXXXXXXXXXXX/exec
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="row">
+      <div>
+        <label>Modo de consulta</label>
+        <select id="mode">
+          <option value="coords">Coordenadas (lat,lng)</option>
+          <option value="cep">CEP + fachada</option>
+        </select>
+      </div>
+      <div>
+        <label>Raio (meters)</label>
+        <input id="radius" type="number" value="200" min="10" step="10" />
+      </div>
+    </div>
+
+    <div id="coordsBox">
+      <label>Coordenadas (ex: -29.728272614451,-53.812125809491)</label>
+      <input id="coords" placeholder="-29.169815,-51.207844" />
+      <div class="hint">Formato: <code>lat,lng</code> (vírgula, sem texto extra).</div>
+    </div>
+
+    <div id="cepBox" style="display:none;">
+      <div class="row">
+        <div>
+          <label>CEP</label>
+          <input id="cep" placeholder="95012-440" />
+        </div>
+        <div>
+          <label>Fachada (logradouro + número)</label>
+          <input id="fachada" placeholder="Avenida Circular Pedro Mocelin 32" />
+        </div>
+      </div>
+      <div class="hint">Para geocoding dar certo, mande <code>Rua/Av + número</code> (não só o número).</div>
+    </div>
+
+    <div class="actions">
+      <button class="primary" id="btnConsultar">Consultar</button>
+      <button class="secondary" id="btnExemploCoords">Exemplo coords</button>
+      <button class="secondary" id="btnExemploCep">Exemplo CEP</button>
+      <button class="secondary" id="btnLimpar">Limpar</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <label>Status</label>
+    <div id="status">Aguardando…</div>
+  </div>
+
+  <div class="card">
+    <label>Resposta (JSON)</label>
+    <pre><code id="output">{}</code></pre>
+  </div>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+
+    function setStatus(text, kind) {
+      const el = $("status");
+      el.textContent = text;
+      el.className = kind || "";
+    }
+
+    function pretty(obj) {
+      try { return JSON.stringify(obj, null, 2); } catch { return String(obj); }
+    }
+
+    function normalizeWebAppUrl(url) {
+      return (url || "").trim().replace(/\/+$/, ""); // remove trailing slash
+    }
+
+    function buildPayload() {
+      const radius = Number($("radius").value || 200);
+      const mode = $("mode").value;
+
+      if (mode === "coords") {
+        const coords = ($("coords").value || "").trim();
+        return { coords, radius };
+      } else {
+        const cep = ($("cep").value || "").trim();
+        const fachada = ($("fachada").value || "").trim();
+        return { cep, fachada, radius };
+      }
+    }
+
+    async function callWebhook() {
+      const url = normalizeWebAppUrl($("webappUrl").value);
+      if (!url) {
+        setStatus("Cole a URL do WebApp do Apps Script.", "bad");
+        return;
+      }
+
+      const payload = buildPayload();
+      $("output").textContent = pretty({ sending: payload });
+
+      setStatus("Consultando…", "");
+
+      try {
+        const res = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+
+        const text = await res.text();
+        let data;
+        try { data = JSON.parse(text); } catch { data = { raw_text: text }; }
+
+        $("output").textContent = pretty(data);
+
+        if (data && data.ok === true) {
+          const v = data.viavel === true ? "VIÁVEL" : "NÃO VIÁVEL";
+          setStatus(`OK • ${v} • coords: ${data.coords || (data.lat + "," + data.lng)} • ms: ${data.ms ?? "?"}`, data.viavel ? "ok" : "bad");
+        } else {
+          setStatus(`Falhou • motivo: ${data?.motivo || "desconhecido"} • httpStatus: ${data?.httpStatus || res.status}`, "bad");
+        }
+      } catch (err) {
+        $("output").textContent = pretty({ error: String(err) });
+        setStatus("Erro na chamada (fetch). Verifique se o WebApp está público e se há bloqueio de CORS.", "bad");
+      }
+    }
+
+    function toggleMode() {
+      const mode = $("mode").value;
+      $("coordsBox").style.display = mode === "coords" ? "" : "none";
+      $("cepBox").style.display = mode === "cep" ? "" : "none";
+      setStatus("Aguardando…", "");
+      $("output").textContent = "{}";
+    }
+
+    $("mode").addEventListener("change", toggleMode);
+
+    $("btnConsultar").addEventListener("click", callWebhook);
+
+    $("btnExemploCoords").addEventListener("click", () => {
+      $("mode").value = "coords";
+      toggleMode();
+      $("coords").value = "-29.169815,-51.207844";
+      $("radius").value = 200;
+    });
+
+    $("btnExemploCep").addEventListener("click", () => {
+      $("mode").value = "cep";
+      toggleMode();
+      $("cep").value = "95012-440";
+      $("fachada").value = "Avenida Circular Pedro Mocelin 32";
+      $("radius").value = 200;
+    });
+
+    $("btnLimpar").addEventListener("click", () => {
+      $("coords").value = "";
+      $("cep").value = "";
+      $("fachada").value = "";
+      $("output").textContent = "{}";
+      setStatus("Aguardando…", "");
+    });
+
+    toggleMode();
+  </script>
+</body>
+</html>
