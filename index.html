@@ -21,20 +21,14 @@
     .bad { color: #991b1b; font-weight: 700; }
     pre { background: #0b1020; color: #e5e7eb; padding: 12px; border-radius: 12px; overflow:auto; }
     code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .mini { font-size: 12px; color:#6b7280; margin-top: 6px; }
   </style>
 </head>
 <body>
   <h1>Consulta de Viabilidade (OzMap)</h1>
   <div class="hint">
-    Envia para seu webhook (Apps Script). Você pode consultar por <b>coordenadas</b> ou <b>CEP + fachada</b>.
-  </div>
-
-  <div class="card">
-    <label>URL do WebApp (Apps Script)</label>
-    <input id="webappUrl" placeholder="Cole aqui a URL do seu Apps Script Web App" />
-    <div class="hint">
-      Ex: https://script.google.com/macros/s/XXXXXXXXXXXX/exec
-    </div>
+    Consulta por <b>coordenadas</b> ou <b>CEP + fachada</b>.
+    <div class="mini" id="endpointInfo"></div>
   </div>
 
   <div class="card">
@@ -69,7 +63,7 @@
           <input id="fachada" placeholder="Avenida Circular Pedro Mocelin 32" />
         </div>
       </div>
-      <div class="hint">Para geocoding dar certo, mande <code>Rua/Av + número</code> (não só o número).</div>
+      <div class="hint">Envie <code>Rua/Av + número</code> (não só o número).</div>
     </div>
 
     <div class="actions">
@@ -91,6 +85,10 @@
   </div>
 
   <script>
+    // ✅ URL FIXA (já embutida)
+    const WEBAPP_URL =
+      "https://script.google.com/macros/s/AKfycbxZGS3gyYjRE7VOWBWfy0HpOk7YfVgYmbTg1EC0R3yTU99-wQDDIQkvmd2I7Xjk-iJn/exec";
+
     const $ = (id) => document.getElementById(id);
 
     function setStatus(text, kind) {
@@ -103,8 +101,8 @@
       try { return JSON.stringify(obj, null, 2); } catch { return String(obj); }
     }
 
-    function normalizeWebAppUrl(url) {
-      return (url || "").trim().replace(/\/+$/, ""); // remove trailing slash
+    function normalizeUrl(url) {
+      return (url || "").trim().replace(/\/+$/, "");
     }
 
     function buildPayload() {
@@ -122,11 +120,7 @@
     }
 
     async function callWebhook() {
-      const url = normalizeWebAppUrl($("webappUrl").value);
-      if (!url) {
-        setStatus("Cole a URL do WebApp do Apps Script.", "bad");
-        return;
-      }
+      const url = normalizeUrl(WEBAPP_URL);
 
       const payload = buildPayload();
       $("output").textContent = pretty({ sending: payload });
@@ -148,13 +142,14 @@
 
         if (data && data.ok === true) {
           const v = data.viavel === true ? "VIÁVEL" : "NÃO VIÁVEL";
-          setStatus(`OK • ${v} • coords: ${data.coords || (data.lat + "," + data.lng)} • ms: ${data.ms ?? "?"}`, data.viavel ? "ok" : "bad");
+          const coords = data.coords || (data.lat + "," + data.lng);
+          setStatus(`OK • ${v} • coords: ${coords} • ms: ${data.ms ?? "?"}`, data.viavel ? "ok" : "bad");
         } else {
           setStatus(`Falhou • motivo: ${data?.motivo || "desconhecido"} • httpStatus: ${data?.httpStatus || res.status}`, "bad");
         }
       } catch (err) {
         $("output").textContent = pretty({ error: String(err) });
-        setStatus("Erro na chamada (fetch). Verifique se o WebApp está público e se há bloqueio de CORS.", "bad");
+        setStatus("Erro na chamada (fetch). Verifique se o WebApp está público.", "bad");
       }
     }
 
@@ -167,7 +162,6 @@
     }
 
     $("mode").addEventListener("change", toggleMode);
-
     $("btnConsultar").addEventListener("click", callWebhook);
 
     $("btnExemploCoords").addEventListener("click", () => {
@@ -192,6 +186,9 @@
       $("output").textContent = "{}";
       setStatus("Aguardando…", "");
     });
+
+    // Mostra só uma info pequena (opcional)
+    $("endpointInfo").textContent = "Endpoint fixo configurado.";
 
     toggleMode();
   </script>
