@@ -5,81 +5,44 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Consulta de Viabilidade (OzMap)</title>
   <style>
-    :root { --b:#e5e7eb; --t:#111827; --m:#6b7280; --bg:#ffffff; }
+    :root { --b:#e5e7eb; --t:#111827; --m:#6b7280; --bg:#ffffff; --ok:#065f46; --err:#b91c1c; }
     *{box-sizing:border-box}
-    body{
-      margin:0;
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
-      color:var(--t);
-      background:var(--bg);
-    }
+    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;color:var(--t);background:var(--bg)}
     .wrap{max-width:1100px;margin:32px auto;padding:0 18px}
     h1{font-size:40px;margin:0 0 6px}
     p{margin:0 0 18px;color:var(--m)}
-    .card{
-      border:1px solid var(--b);
-      border-radius:14px;
-      padding:18px;
-      margin:16px 0;
-      background:#fff;
-    }
-    .grid{
-      display:grid;
-      grid-template-columns: 1fr 1fr;
-      gap:14px;
-    }
+    .badge{display:inline-block;padding:2px 10px;border-radius:999px;border:1px solid var(--b);color:var(--m);font-size:12px;margin-left:8px;vertical-align:middle}
+    .card{border:1px solid var(--b);border-radius:14px;padding:18px;margin:16px 0;background:#fff}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
     @media (max-width: 860px){ .grid{grid-template-columns:1fr} }
-    label{display:block;font-weight:600;margin:8px 0 6px}
+    label{display:block;font-weight:700;margin:8px 0 6px}
     input, select{
-      width:100%;
-      padding:12px 12px;
-      border-radius:10px;
-      border:1px solid var(--b);
-      font-size:14px;
-      outline:none;
+      width:100%;padding:12px 12px;border-radius:10px;border:1px solid var(--b);
+      font-size:14px;outline:none;background:#fff;color:var(--t)
     }
     input:focus, select:focus{border-color:#9ca3af}
     .help{color:var(--m);font-size:12px;margin-top:6px}
     .row{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
     button{
-      padding:10px 14px;
-      border-radius:10px;
-      border:1px solid var(--b);
-      background:#f3f4f6;
-      cursor:pointer;
-      font-weight:600;
+      padding:10px 14px;border-radius:10px;border:1px solid var(--b);
+      background:#f3f4f6;cursor:pointer;font-weight:700
     }
-    button.primary{
-      background:#2563eb;
-      color:#fff;
-      border-color:#1d4ed8;
-    }
+    button.primary{background:#2563eb;color:#fff;border-color:#1d4ed8}
     button:disabled{opacity:.55;cursor:not-allowed}
-    .status{
-      font-weight:700;
-      color:#b91c1c;
+    .status{font-weight:800}
+    .status.ok{color:var(--ok)}
+    .status.err{color:var(--err)}
+    .mini{color:var(--m);font-size:12px;margin-top:6px}
+    .readonly{
+      background:#f3f4f6 !important;
+      color:#6b7280 !important;
+      border-color:#e5e7eb !important;
     }
-    .status.ok{color:#065f46}
-    pre{
-      margin:0;
-      padding:14px;
-      border-radius:12px;
-      background:#0b1220;
-      color:#e5e7eb;
-      overflow:auto;
-      min-height:80px;
-    }
-    .mini{color:var(--m);font-size:12px}
-    .badge{
-      display:inline-block;
-      padding:2px 10px;
-      border-radius:999px;
-      border:1px solid var(--b);
-      color:var(--m);
-      font-size:12px;
-      margin-left:8px;
-      vertical-align:middle;
-    }
+    .resultGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+    @media (max-width: 860px){ .resultGrid{grid-template-columns:1fr} }
+    .kv{padding:12px;border:1px solid var(--b);border-radius:12px;background:#fff}
+    .k{font-size:12px;color:var(--m);font-weight:700;margin-bottom:6px}
+    .v{font-size:14px;font-weight:800;color:var(--t);word-break:break-word}
   </style>
 </head>
 
@@ -88,10 +51,12 @@
     <h1>Consulta de Viabilidade (OzMap)</h1>
     <p>
       Consulta por <b>coordenadas</b> ou <b>CEP + fachada</b>.
+      <span class="badge">Raio fixo: 200m</span>
       <span class="badge">Endpoint fixo configurado</span>
     </p>
 
     <div class="card">
+
       <div class="grid">
         <div>
           <label for="mode">Modo de consulta</label>
@@ -99,34 +64,37 @@
             <option value="coords">Coordenadas (lat,lng)</option>
             <option value="cep">CEP + fachada</option>
           </select>
+          <div class="help">O raio está travado internamente em <b>200m</b>.</div>
         </div>
-        <div>
-          <label for="radius">Raio (meters)</label>
-          <input id="radius" type="number" value="200" min="50" step="10" />
+
+        <!-- NO LUGAR DO RAIO: NÚMERO / FACHADA (somente no modo CEP) -->
+        <div id="boxNumero">
+          <label for="numero">Fachada (número / complemento)</label>
+          <input id="numero" placeholder="Ex: 32 ou 32 apto 101" />
+          <div class="help">Você digita só o número/complemento. A rua será buscada pelo CEP.</div>
         </div>
       </div>
 
       <!-- COORDS -->
-      <div id="boxCoords">
+      <div id="boxCoords" style="margin-top:8px">
         <label for="coords">Coordenadas (ex: -29.728272614451,-53.812125809491)</label>
         <input id="coords" placeholder="-29.1698153,-51.2078443" />
         <div class="help">Formato: <b>lat,lng</b> (vírgula, sem texto extra).</div>
       </div>
 
       <!-- CEP -->
-      <div id="boxCep" style="display:none">
+      <div id="boxCep" style="display:none;margin-top:8px">
         <div class="grid">
           <div>
             <label for="cep">CEP</label>
             <input id="cep" placeholder="95012-440" />
+            <div class="help">Pode digitar com hífen ou sem.</div>
           </div>
           <div>
-            <label for="fachada">Fachada (logradouro + número)</label>
-            <input id="fachada" placeholder="Av. Circular Pedro Mocelin, 32" />
+            <label for="endereco">Endereço (encontrado)</label>
+            <input id="endereco" class="readonly" readonly placeholder="Aguardando CEP..." />
+            <div class="help">Campo apenas para visualizar a rua detectada pelo CEP.</div>
           </div>
-        </div>
-        <div class="help">
-          Para geocoding dar certo, envie <b>Rua/Av + número</b> (não só o número).
         </div>
       </div>
 
@@ -138,50 +106,104 @@
       </div>
 
       <div class="card" style="margin-top:16px">
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
-          <div>
-            <div style="font-weight:800;margin-bottom:6px">Status</div>
-            <div id="status" class="status">Aguardando...</div>
+        <div style="font-weight:900;margin-bottom:8px">Status</div>
+        <div id="status" class="status">Aguardando...</div>
+        <div id="mini" class="mini"></div>
+      </div>
+
+      <!-- RESULTADO (SEM JSON BRUTO) -->
+      <div class="card">
+        <div style="font-weight:900;margin-bottom:10px">Resultado</div>
+
+        <div class="resultGrid">
+          <div class="kv">
+            <div class="k">Viabilidade</div>
+            <div class="v" id="r_viab">—</div>
           </div>
-          <div class="mini" id="mini"></div>
+          <div class="kv">
+            <div class="k">Motivo</div>
+            <div class="v" id="r_motivo">—</div>
+          </div>
+
+          <div class="kv">
+            <div class="k">Coords consultadas</div>
+            <div class="v" id="r_coords">—</div>
+          </div>
+          <div class="kv">
+            <div class="k">Endereço geocodificado</div>
+            <div class="v" id="r_geo">—</div>
+          </div>
+
+          <div class="kv">
+            <div class="k">Melhor box</div>
+            <div class="v" id="r_box">—</div>
+          </div>
+          <div class="kv">
+            <div class="k">Distância / Disponibilidade</div>
+            <div class="v" id="r_dist">—</div>
+          </div>
+        </div>
+
+        <div class="help" style="margin-top:10px">
+          Obs: no modo CEP, o site usa <b>BrasilAPI</b> para obter a rua e só então envia ao WebApp.
         </div>
       </div>
 
-      <div class="card">
-        <div style="font-weight:800;margin-bottom:10px">Resposta (JSON)</div>
-        <pre id="output">{}</pre>
-      </div>
     </div>
   </div>
 
   <script>
-    // ✅ ENDPOINT FIXO (não aparece na tela)
+    // ✅ ENDPOINT FIXO (não aparece no visual)
     const ENDPOINT = "https://script.google.com/macros/s/AKfycbxZGS3gyYjRE7VOWBWfy0HpOk7YfVgYmbTg1EC0R3yTU99-wQDDIQkvmd2I7Xjk-iJn/exec";
+
+    // ✅ RAIO TRAVADO
+    const FIXED_RADIUS = 200;
 
     const $ = (id) => document.getElementById(id);
 
-    const setStatus = (msg, ok=false) => {
-      $("status").textContent = msg;
-      $("status").className = "status" + (ok ? " ok" : "");
+    const setStatus = (msg, type="") => {
+      const el = $("status");
+      el.textContent = msg;
+      el.className = "status" + (type ? (" " + type) : "");
     };
 
     const setMini = (msg) => $("mini").textContent = msg || "";
 
-    const setOutput = (obj) => {
-      $("output").textContent = typeof obj === "string" ? obj : JSON.stringify(obj, null, 2);
+    const clearResult = () => {
+      $("r_viab").textContent = "—";
+      $("r_motivo").textContent = "—";
+      $("r_coords").textContent = "—";
+      $("r_geo").textContent = "—";
+      $("r_box").textContent = "—";
+      $("r_dist").textContent = "—";
     };
 
-    // ---------- JSONP (SEM FETCH) ----------
+    const fillResult = (res) => {
+      $("r_viab").textContent = res.viavel === true ? "✅ Viável" : "❌ Não viável";
+      $("r_motivo").textContent = res.motivo || "—";
+      $("r_coords").textContent = res.coords || (res.lat != null && res.lng != null ? `${res.lat},${res.lng}` : "—");
+      $("r_geo").textContent = res.endereco_geocodificado || "—";
+
+      if (res.box_nome) $("r_box").textContent = `${res.box_nome} (${res.box_id || "-"})`;
+      else $("r_box").textContent = "—";
+
+      const dist = (res.distancia_melhor_box !== "" && res.distancia_melhor_box != null) ? `${res.distancia_melhor_box} m` : "—";
+      const disp = (res.disponibilidade !== "" && res.disponibilidade != null) ? `${res.disponibilidade}` : "—";
+      $("r_dist").textContent = `Dist: ${dist} | Disp: ${disp}`;
+    };
+
+    // -------- JSONP (sem fetch para Apps Script) --------
     function jsonpRequest(payload) {
       return new Promise((resolve, reject) => {
         const cbName = "cb_" + Date.now() + "_" + Math.random().toString(16).slice(2);
 
-        // timeout
         const timeoutMs = 15000;
         const t = setTimeout(() => {
           cleanup();
-          reject(new Error("Timeout na requisição JSONP."));
+          reject(new Error("Timeout na requisição."));
         }, timeoutMs);
+
+        let script;
 
         function cleanup() {
           clearTimeout(t);
@@ -199,102 +221,180 @@
           "?data=" + encodeURIComponent(JSON.stringify(payload)) +
           "&callback=" + encodeURIComponent(cbName);
 
-        const script = document.createElement("script");
+        script = document.createElement("script");
         script.src = url;
         script.async = true;
 
         script.onerror = () => {
           cleanup();
-          reject(new Error("Falha ao carregar o script JSONP (endpoint inacessível ou bloqueado)."));
+          reject(new Error("Falha ao chamar o WebApp."));
         };
 
         document.body.appendChild(script);
       });
     }
 
-    // ---------- UI ----------
+    // -------- BrasilAPI (CEP -> rua) --------
+    function onlyDigits(s){ return String(s||"").replace(/\D/g,""); }
+
+    async function lookupCepBrasilApi(cep) {
+      const cep8 = onlyDigits(cep);
+      if (cep8.length !== 8) return null;
+
+      // BrasilAPI v2
+      const url = `https://brasilapi.com.br/api/cep/v2/${cep8}`;
+      try {
+        const res = await fetch(url, { method:"GET" });
+        if (!res.ok) return null;
+        const data = await res.json();
+        if (!data || data.errors) return null;
+
+        return {
+          street: data.street || "",
+          neighborhood: data.neighborhood || "",
+          city: data.city || "",
+          state: data.state || ""
+        };
+      } catch (e) {
+        return null;
+      }
+    }
+
+    // -------- UI --------
     function toggleMode() {
       const mode = $("mode").value;
+
       $("boxCoords").style.display = (mode === "coords") ? "block" : "none";
       $("boxCep").style.display = (mode === "cep") ? "block" : "none";
+
+      // “Fachada no lugar do raio” só faz sentido no modo CEP
+      $("boxNumero").style.display = (mode === "cep") ? "block" : "none";
+
       setStatus("Aguardando...");
       setMini("");
-      setOutput({});
+      $("endereco").value = "";
+      clearResult();
+    }
+
+    async function refreshEnderecoPreview() {
+      // Monta o endereço visual (rua + numero) usando BrasilAPI
+      const cep = $("cep").value;
+      const numero = $("numero").value.trim();
+
+      $("endereco").value = "Buscando rua pelo CEP...";
+      const data = await lookupCepBrasilApi(cep);
+
+      if (!data || !data.street) {
+        $("endereco").value = "CEP inválido ou indisponível";
+        return null;
+      }
+
+      const parts = [];
+      // rua + número/complemento
+      const ruaNumero = [data.street, numero].filter(Boolean).join(", ");
+      parts.push(ruaNumero);
+
+      // cidade/uf
+      const cidadeUf = [data.city, data.state].filter(Boolean).join(" - ");
+      if (cidadeUf) parts.push(cidadeUf);
+
+      $("endereco").value = parts.filter(Boolean).join(" | ");
+      return { data, ruaNumero };
     }
 
     async function consultar() {
       const mode = $("mode").value;
-      const radius = Number($("radius").value || 200);
-
-      let payload = { radius };
-
-      if (mode === "coords") {
-        const coords = $("coords").value.trim();
-        payload.coords = coords;
-      } else {
-        const cep = $("cep").value.trim();
-        const fachada = $("fachada").value.trim();
-        payload.cep = cep;
-        payload.fachada = fachada;
-      }
 
       $("btnConsultar").disabled = true;
       setStatus("Consultando...");
       setMini("");
+      clearResult();
 
       try {
+        let payload = { radius: FIXED_RADIUS };
+
+        if (mode === "coords") {
+          const coords = $("coords").value.trim();
+          payload.coords = coords;
+        } else {
+          const cep = $("cep").value.trim();
+          const numero = $("numero").value.trim();
+
+          // Busca rua pelo CEP (BrasilAPI) e monta fachada/endereço
+          const preview = await refreshEnderecoPreview();
+
+          if (!preview) {
+            setStatus("Erro: CEP inválido/indisponível.", "err");
+            setMini("Digite um CEP válido e tente novamente.");
+            return;
+          }
+
+          // Envia ao WebApp:
+          // - cep: para o Apps Script também validar/usar
+          // - fachada: já com "Rua, número" (melhora o geocoding)
+          payload.cep = onlyDigits(cep);
+          payload.fachada = preview.ruaNumero; // "Rua X, 32" (ou "Rua X, 32 apto 101")
+        }
+
         const res = await jsonpRequest(payload);
 
-        setOutput(res);
-
         if (res && res.ok === true) {
-          setStatus(res.viavel ? "✅ Viável" : "❌ Não viável", true);
+          fillResult(res);
+          setStatus(res.viavel ? "✅ Viável" : "❌ Não viável", "ok");
           const extras = [];
-          if (res.coords) extras.push("coords: " + res.coords);
-          if (res.box_nome) extras.push("box: " + res.box_nome);
-          if (res.distancia_melhor_box !== "" && res.distancia_melhor_box != null) extras.push("dist: " + res.distancia_melhor_box);
-          if (res.ms != null) extras.push("ms: " + res.ms);
+          extras.push(`raio: ${FIXED_RADIUS}m`);
+          if (res.coords) extras.push(`coords: ${res.coords}`);
+          if (res.box_nome) extras.push(`box: ${res.box_nome}`);
+          if (res.ms != null) extras.push(`ms: ${res.ms}`);
           setMini(extras.join(" | "));
         } else {
-          setStatus("Erro: " + (res && res.motivo ? res.motivo : "resposta inválida"));
+          setStatus("Erro: " + (res && res.motivo ? res.motivo : "resposta inválida"), "err");
           if (res && res.detalhe) setMini(res.detalhe);
         }
 
       } catch (err) {
-        setStatus("Erro na chamada. " + String(err.message || err));
-        setOutput({ error: String(err.message || err) });
+        setStatus("Erro na consulta.", "err");
+        setMini(String(err.message || err));
       } finally {
         $("btnConsultar").disabled = false;
       }
     }
 
-    // ---------- events ----------
+    // events
     $("mode").addEventListener("change", toggleMode);
+
+    // Atualiza preview do endereço quando CEP/número mudam (modo CEP)
+    $("cep").addEventListener("blur", async () => {
+      if ($("mode").value === "cep") await refreshEnderecoPreview();
+    });
+    $("numero").addEventListener("blur", async () => {
+      if ($("mode").value === "cep") await refreshEnderecoPreview();
+    });
+
     $("btnConsultar").addEventListener("click", consultar);
 
     $("btnExCoords").addEventListener("click", () => {
       $("mode").value = "coords";
       toggleMode();
       $("coords").value = "-29.1698153,-51.2078443";
-      $("radius").value = "200";
     });
 
-    $("btnExCep").addEventListener("click", () => {
+    $("btnExCep").addEventListener("click", async () => {
       $("mode").value = "cep";
       toggleMode();
       $("cep").value = "95012-440";
-      $("fachada").value = "Av. Circular Pedro Mocelin, 32";
-      $("radius").value = "200";
+      $("numero").value = "32";
+      await refreshEnderecoPreview();
     });
 
     $("btnLimpar").addEventListener("click", () => {
       $("coords").value = "";
       $("cep").value = "";
-      $("fachada").value = "";
-      $("radius").value = "200";
+      $("numero").value = "";
+      $("endereco").value = "";
       setStatus("Aguardando...");
       setMini("");
-      setOutput({});
+      clearResult();
     });
 
     // init
